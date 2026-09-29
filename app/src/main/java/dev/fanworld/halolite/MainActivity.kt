@@ -3,6 +3,7 @@ package dev.fanworld.halolite
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -26,6 +27,16 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Shizuku готов: запускаем анимацию в фоне и сразу закрываемся, без следа в «недавних»
+        if (LightsBinder.hasPermission()) {
+            if (checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != PackageManager.PERMISSION_GRANTED) {
+                Thread { StripLight.grantSelf(this) }.start()
+            }
+            startForegroundService(Intent(this, LightService::class.java))
+            finishAndRemoveTask()
+            return
+        }
 
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
@@ -97,6 +108,7 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
+        if (!::status.isInitialized) return
         status.text = when {
             !LightsBinder.shizukuRunning() -> "Shizuku не запущен"
             !LightsBinder.hasPermission() -> "Shizuku работает, нужен доступ"
